@@ -1,0 +1,3 @@
+- **Speed Layer** : TCL API ingestion with Kafka and instant detection of delays with Spark Streaming.
+- **Batch Layer** : Storage of raw data on Hadoop (HDFS) (or cloud solution ?) and distributed computing on batches with Spark.
+- **Serving Layer** : Centralization of queries in Cassandra and visualization of dashboards on Grafana.
