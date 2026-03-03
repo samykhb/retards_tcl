@@ -1,0 +1,12 @@
+# Fichiers Python temporaires
+__pycache__/
+*.pyc
+
+# Dossiers de données
+data/
+*.csv
+*.json
+
+# Environnements virtuels
+venv/
+env/
