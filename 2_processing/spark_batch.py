@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, unix_timestamp, round, avg, desc, count, to_timestamp, regexp_extract
+from pyspark.sql.functions import col, round, avg, count, max, min, countDistinct, stddev, regexp_extract
 from cassandra.cluster import Cluster
 
 def setup_cassandra_schema():
@@ -21,6 +21,10 @@ def setup_cassandra_schema():
                 ligne text,
                 direction text,
                 attente_moyenne_min float,
+                attente_max_min float,
+                attente_min_min float,
+                vehicules_actifs int,
+                ecart_type_attente float,
                 total_enregistrements int,
                 PRIMARY KEY (ligne, direction)
             )
@@ -89,10 +93,17 @@ def main():
         
         df_stats = df_final.groupBy("ligne", "direction") \
             .agg(
-                round(avg("attente_min"), 2).alias("attente_moyenne_min"),
-                count("*").alias("total_enregistrements")
+                round(avg("attente_min"), 2).alias("attente_moyenne_min"), # attente moyenne en min, tous arrêts confondus
+                max("attente_min").alias("attente_max_min"), # attente mini en min
+                min("attente_min").alias("attente_min_min"), # attente max en min
+                countDistinct("coursetheorique").alias("vehicules_actifs"), # nombre de véhicules actifs sur le réseau
+                round(stddev("attente_min"), 2).alias("ecart_type_attente"), # régularité
+                count("*").alias("total_enregistrements") # nb total d'enregistrements
             )
-            
+        
+        # Au cas où l'ecart type renvoie null (ex : 1 seul bus), on le remplace par 0
+        df_stats = df_stats.fillna(0.0, subset=["ecart_type_attente"])
+
         print("\n--- Sauvegarde des resultats dans Cassandra ---")
         
         # Ecriture dans Cassandra
