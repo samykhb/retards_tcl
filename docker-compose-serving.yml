@@ -1,0 +1,13 @@
+  services:
+  cassandra:
+    image: cassandra:4.1
+    container_name: tcl_cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TCL_Cluster
+      # Limitation RAM
+      - HEAP_NEWSIZE=128M
+      - MAX_HEAP_SIZE=512M 
+    volumes:
+      - ./3_serving/init.cql:/init.cql
