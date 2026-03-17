@@ -12,7 +12,7 @@ def main():
     
     # Identifiants Data Grand Lyon
     email = "samy.khebbeb@imt-atlantique.net"
-    password = "ARCHIBIGDSAMYTAIB" # notre mdp
+    password = "ARCHIBIGDSAMYTAIB29200brest" # notre mdp
     
     url = "https://data.grandlyon.com/fr/datapusher/ws/rdata/tcl_sytral.tclpassagearret/all.json?maxfeatures=100"
 
