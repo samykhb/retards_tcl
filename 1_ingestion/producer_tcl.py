@@ -12,9 +12,9 @@ def main():
     
     # Identifiants Data Grand Lyon
     email = "samy.khebbeb@imt-atlantique.net"
-    password = "ARCHIBIGDSAMYTAIB29200brest" # notre mdp
+    password = "3t4mxU8YvuTeTrH" # notre mdp
     
-    url = "https://data.grandlyon.com/fr/datapusher/ws/rdata/tcl_sytral.tclpassagearret/all.json?maxfeatures=100"
+    url = "https://data.grandlyon.com/fr/datapusher/ws/rdata/tcl_sytral.tclpassagearret/all.json?maxfeatures=-1&start=1&filename=prochains-passages-reseau-transports-commun-lyonnais-rhonexpress-disponibilites-temps-reel"
 
     # Encodage de l'authentification
     auth_string = f"{email}:{password}"
