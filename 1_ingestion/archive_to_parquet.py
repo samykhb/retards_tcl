@@ -7,7 +7,7 @@ from kafka import KafkaConsumer
 
 def main():
     topic = 'tcl-passages'
-    batch_size = 500
+    batch_size = 10000
     output_dir = "./data/raw"
 
     # Creer le repertoire de destination
