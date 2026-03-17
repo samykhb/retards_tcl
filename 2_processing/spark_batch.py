@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, unix_timestamp, round, avg, desc
+from pyspark.sql.functions import col, unix_timestamp, round, avg, desc, count, to_timestamp, regexp_extract
 from cassandra.cluster import Cluster
 
 def setup_cassandra_schema():
@@ -7,6 +7,7 @@ def setup_cassandra_schema():
     try:
         # Connexion au cluster Cassandra
         clstr = Cluster(['cassandra'])
+        session = clstr.connect()
         
         # Creation du Keyspace (TP6)
         session.execute("""
@@ -19,7 +20,7 @@ def setup_cassandra_schema():
             CREATE TABLE IF NOT EXISTS tcl.stats_historiques (
                 ligne text,
                 direction text,
-                retard_moyen_min float,
+                attente_moyenne_min float,
                 total_enregistrements int,
                 PRIMARY KEY (ligne, direction)
             )
@@ -36,6 +37,8 @@ def setup_cassandra_schema():
             )
         """)
         print("Schema Cassandra pret.")
+        session.shutdown()
+        clstr.shutdown()
     except Exception as e:
         print(f"Erreur lors de la creation du schema Cassandra : {e}")
 
@@ -54,24 +57,40 @@ def main():
         .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
-    input_path = "/app/data/raw/*.parquet"
+
+    # Debuggage
+    import os
+    print("="*30)
+    path_to_check = "/app/data/raw"
+    if os.path.exists(path_to_check):
+        print(f"Le dossier {path_to_check} existe.")
+        print(f"Fichiers trouvés : {os.listdir(path_to_check)}")
+    else:
+        print(f"Ereur : Le dossier {path_to_check} est introuvable dans le container.")
+    print("="*30)
+    input_path = "/app/data/raw"
     
     print("Demarrage du traitement Batch Spark...")
     
     try:
         df = spark.read.parquet(input_path)
-        df_clean = df.filter(col("heurepassage").isNotNull() & col("coursetheorique").isNotNull())
         
-        df_retards = df_clean.withColumn(
-            "retard_minutes", 
-            (unix_timestamp(col("heurepassage")) - unix_timestamp(col("coursetheorique"))) / 60
-        )
+        # On ne garde que les données "Estimées" (vrai live)
+        df_live = df.filter((col("type") == "E") & col("delaipassage").isNotNull())
         
-        df_filtre = df_retards.filter((col("retard_minutes") > -10) & (col("retard_minutes") < 120))
+        # Extraction du délai (temps d'attente à l'arrêt avant prochain passage)
+        df_minutes = df_live.withColumn(
+            "attente_min", 
+            regexp_extract(col("delaipassage"), r"(\d+)", 1).cast("float")
+        )       
         
-        df_stats = df_filtre.groupBy("ligne", "direction") \
+        # On ne garde que les bus proches (temps d'attente <= 15 min)
+        df_final = df_minutes.filter(col("attente_min") <= 15)
+        
+        df_stats = df_final.groupBy("ligne", "direction") \
             .agg(
-                round(avg("retard_minutes"), 2).alias("retard_moyen_min")
+                round(avg("attente_min"), 2).alias("attente_moyenne_min"),
+                count("*").alias("total_enregistrements")
             )
             
         print("\n--- Sauvegarde des resultats dans Cassandra ---")
