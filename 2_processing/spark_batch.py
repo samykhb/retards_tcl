@@ -54,7 +54,15 @@ def main():
         .appName("TCL_Batch_Layer") \
         .config("spark.driver.memory", "1g") \
         .config("spark.executor.memory", "1g") \
-        .config("spark.jars.packages", "com.datastax.spark:spark-cassandra-connector_2.12:3.5.0") \
+        .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,com.datastax.spark:spark-cassandra-connector_2.12:3.5.0") \
+        .config("spark.hadoop.fs.s3a.endpoint", "http://tcl_minio:9000") \
+        .config("spark.hadoop.fs.s3a.access.key", "admin") \
+        .config("spark.hadoop.fs.s3a.secret.key", "password123") \
+        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
+        .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
         .config("spark.cassandra.connection.host", "cassandra") \
         .config("spark.cassandra.connection.port", "9042") \
         .getOrCreate()
@@ -62,20 +70,15 @@ def main():
     spark.sparkContext.setLogLevel("WARN")
 
     # Debuggage
-    import os
     print("="*30)
-    path_to_check = "/app/data/raw"
-    if os.path.exists(path_to_check):
-        print(f"Le dossier {path_to_check} existe.")
-        print(f"Fichiers trouvés : {os.listdir(path_to_check)}")
-    else:
-        print(f"Ereur : Le dossier {path_to_check} est introuvable dans le container.")
+    input_path = "s3a://tcl-datalake/year=2026/month=03/*/*/*" 
+    print(f"Lecture des données depuis MinIO : {input_path}")
     print("="*30)
-    input_path = "/app/data/raw"
     
     print("Demarrage du traitement Batch Spark...")
     
     try:
+        # Lecture depuis MinIO au lieu du dossier local
         df = spark.read.parquet(input_path)
         
         # On enlève les doublons

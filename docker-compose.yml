@@ -23,20 +23,32 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+  minio:
+    image: minio/minio
+    container_name: tcl_minio
+    ports:
+      - "9000:9000" # Port API S3
+      - "9001:9001" # Port Console Web
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: always
+
   producer:
     build: ./1_ingestion
     container_name: tcl_producer
     depends_on:
       - kafka
     restart: on-failure
-    # Le Dockerfile execute par defaut "python producer_tcl.py"
 
   consumer:
     build: ./1_ingestion
     container_name: tcl_consumer
     depends_on:
       - kafka
-    # Maintient le conteneur actif pour executer le script manuellement
     command: tail -f /dev/null
 
   archiver:
@@ -44,7 +56,16 @@ services:
     container_name: tcl_archiver
     depends_on:
       - kafka
+      - minio
     volumes:
       - ./data/raw:/app/data/raw
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password123
+      - S3_ENDPOINT=http://minio:9000
     command: ["python", "-u", "archive_to_parquet.py"]
     restart: on-failure
+
+
+volumes:
+  minio_data:
