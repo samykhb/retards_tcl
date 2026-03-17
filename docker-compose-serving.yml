@@ -1,0 +1,22 @@
+  services:
+  cassandra:
+    image: cassandra:4.1
+    container_name: tcl_cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TCL_Cluster
+      # Limitation RAM
+      - HEAP_NEWSIZE=128M
+      - MAX_HEAP_SIZE=512M 
+    volumes:
+      - ./3_serving/init.cql:/init.cql
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tcl_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=hadesarchitect-cassandra-datasource
+    depends_on:
+      - cassandra
