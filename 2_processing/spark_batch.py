@@ -96,7 +96,6 @@ def main():
                 round(avg("attente_min"), 2).alias("attente_moyenne_min"), # attente moyenne en min, tous arrêts confondus
                 max("attente_min").alias("attente_max_min"), # attente mini en min
                 min("attente_min").alias("attente_min_min"), # attente max en min
-                countDistinct("coursetheorique").alias("vehicules_actifs"), # nombre de véhicules actifs sur le réseau
                 round(stddev("attente_min"), 2).alias("ecart_type_attente"), # régularité
                 count("*").alias("total_enregistrements") # nb total d'enregistrements
             )
