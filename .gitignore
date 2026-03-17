@@ -10,3 +10,6 @@ data/
 # Environnements virtuels
 venv/
 env/
+
+# DS_Store (mac)
+.DS_Store
