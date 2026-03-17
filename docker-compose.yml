@@ -38,3 +38,13 @@ services:
       - kafka
     # Maintient le conteneur actif pour executer le script manuellement
     command: tail -f /dev/null
+
+  archiver:
+    build: ./1_ingestion
+    container_name: tcl_archiver
+    depends_on:
+      - kafka
+    volumes:
+      - ./data/raw:/app/data/raw
+    command: ["python", "-u", "archive_to_parquet.py"]
+    restart: on-failure

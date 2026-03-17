@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  spark_batch:
+    build: ./2_processing
+    container_name: tcl_spark_batch
+    volumes:
+      # Lier le dossier local au dossier du conteneur
+      - ./data/raw:/app/data/raw
