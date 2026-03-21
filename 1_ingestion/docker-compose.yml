@@ -7,9 +7,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafka-01:
+  kafka-tcl:
     image: confluentinc/cp-kafka:7.3.0
-    container_name: kafka-01
+    container_name: kafka-tcl
     depends_on:
       - zookeeper
     ports:
@@ -18,39 +18,55 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-01:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-tcl:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:29092"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
+
+  minio:
+    image: minio/minio
+    container_name: tcl_minio
+    ports:
+      - "9000:9000" # Port API S3
+      - "9001:9001" # Port Console Web
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: always
 
   producer:
     build: ./1_ingestion
     container_name: tcl_producer
     depends_on:
-      - kafka-01
+      - kafka-tcl
     restart: on-failure
-    # Le Dockerfile execute par defaut "python producer_tcl.py"
 
   consumer:
     build: ./1_ingestion
     container_name: tcl_consumer
     depends_on:
-      - kafka-01
-    # Maintient le conteneur actif pour executer le script manuellement
+      - kafka-tcl
     command: tail -f /dev/null
 
   archiver:
     build: ./1_ingestion
     container_name: tcl_archiver
     depends_on:
-      - kafka-01
+      - kafka-tcl
+      - minio
     volumes:
       - ./data/raw:/app/data/raw
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password123
+      - S3_ENDPOINT=http://minio:9000
     command: ["python", "-u", "archive_to_parquet.py"]
     restart: on-failure
+
+
+
+volumes:
+  minio_data:

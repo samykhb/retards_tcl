@@ -2,6 +2,7 @@ import json
 import time
 import urllib.request
 import base64
+import os
 from datetime import datetime
 from kafka import KafkaProducer, KafkaClient 
 from kafka.admin import KafkaAdminClient, NewTopic
@@ -11,10 +12,10 @@ def main():
     num_partition = 1
     
     # Identifiants Data Grand Lyon
-    email = "samy.khebbeb@imt-atlantique.net"
-    password = "3t4mxU8YvuTeTrH" # notre mdp
+    email = os.getenv("TCL_EMAIL")
+    password = os.getenv("TCL_PASSWORD")
     
-    url = "https://data.grandlyon.com/fr/datapusher/ws/rdata/tcl_sytral.tclpassagearret/all.json?maxfeatures=100"
+    url = "https://data.grandlyon.com/fr/datapusher/ws/rdata/tcl_sytral.tclpassagearret/all.json?maxfeatures=-1&start=1&filename=prochains-passages-reseau-transports-commun-lyonnais-rhonexpress-disponibilites-temps-reel"
 
     # Encodage de l'authentification
     auth_string = f"{email}:{password}"
