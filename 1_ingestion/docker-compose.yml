@@ -7,9 +7,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafka:
+  kafka-tcl:
     image: confluentinc/cp-kafka:7.3.0
-    container_name: kafka
+    container_name: kafka-tcl
     depends_on:
       - zookeeper
     ports:
@@ -18,7 +18,7 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-tcl:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -41,21 +41,21 @@ services:
     build: ./1_ingestion
     container_name: tcl_producer
     depends_on:
-      - kafka
+      - kafka-tcl
     restart: on-failure
 
   consumer:
     build: ./1_ingestion
     container_name: tcl_consumer
     depends_on:
-      - kafka
+      - kafka-tcl
     command: tail -f /dev/null
 
   archiver:
     build: ./1_ingestion
     container_name: tcl_archiver
     depends_on:
-      - kafka
+      - kafka-tcl
       - minio
     volumes:
       - ./data/raw:/app/data/raw
@@ -65,6 +65,7 @@ services:
       - S3_ENDPOINT=http://minio:9000
     command: ["python", "-u", "archive_to_parquet.py"]
     restart: on-failure
+
 
 
 volumes:

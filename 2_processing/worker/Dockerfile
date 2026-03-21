@@ -15,6 +15,7 @@ RUN pip install pyarrow   --no-cache-dir
 RUN pip install scales  --no-cache-dir
 
 RUN apt-get update; apt install -y netcat
+RUN apt install -y rsync
 
 
 # Fix the value of PYTHONHASHSEED
@@ -50,7 +51,7 @@ touch $SPARK_WORKER_LOG && \
 ln -sf /dev/stdout $SPARK_MASTER_LOG && \
 ln -sf /dev/stdout $SPARK_WORKER_LOG
 
-# COPY spark-defaults.conf "${SPARK_HOME}/conf"
+COPY spark-defaults.conf "${SPARK_HOME}/conf"
 COPY start-spark.sh /
 
 CMD ["/bin/bash", "/start-spark.sh"]
