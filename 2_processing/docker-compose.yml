@@ -1,0 +1,96 @@
+services:
+  spark-master-tcl:
+    build: .
+    image: spark-master-tcl
+    container_name: spark-master-tcl
+    networks:
+      - network1
+    ports:
+      - "9080:8080"
+      - "7077:7077"
+      - "4040:4040"
+      - "7001:7000"
+      - "8888:8888"
+    volumes:
+      - ./apps:/opt/spark-apps
+      - ./data:/opt/spark-data
+      - ./spark-logs:/tmp/spark-events
+    environment:
+      - SPARK_LOCAL_IP=spark-master-tcl
+      - SPARK_MASTER_CORES=2
+      - SPARK_WORKLOAD=master
+    entrypoint: /bin/bash
+    command: -c "/opt/spark/sbin/start-master.sh ;/opt/spark-apps/jupyter_start.sh; tail -f /dev/null"
+
+  spark-worker-tcl-a:
+    build: .
+    image: spark-worker-tcl-a
+    container_name: spark-worker-tcl-a
+    networks:
+      - network1
+    mem_limit: 1024m
+    ports:
+      - "9082:8080"
+      - "7002:7000"
+    depends_on:
+      - spark-master-tcl
+    environment:
+      - SPARK_MASTER=spark://spark-master-tcl:7077
+      - SPARK_WORKER_CORES=3
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker-tcl-a
+    volumes:
+      - ./apps:/opt/spark-apps
+      - ./data:/opt/spark-data
+      - ./spark-logs:/tmp/spark-events
+    entrypoint: /bin/bash
+    command: -c "/opt/spark/sbin/start-worker.sh spark://spark-master-tcl:7077; tail -f /dev/null"
+
+  spark-worker-tcl-b:
+    build: .
+    image: spark-worker-tcl-b
+    container_name: spark-worker-tcl-b
+    networks:
+      - network1
+    mem_limit: 1024m
+    ports:
+      - "9083:8080"
+      - "7003:7000"
+    depends_on:
+      - spark-master-tcl
+    environment:
+      - SPARK_MASTER=spark://spark-master-tcl:7077
+      - SPARK_WORKER_CORES=3
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker-tcl-b
+    volumes:
+      - ./apps:/opt/spark-apps
+      - ./data:/opt/spark-data
+      - ./spark-logs:/tmp/spark-events
+    entrypoint: /bin/bash
+    command: -c "/opt/spark/sbin/start-worker.sh spark://spark-master-tcl:7077; tail -f /dev/null"
+
+  spark-history-tcl:
+    build: .
+    image: spark-history-tcl
+    container_name: spark-history-tcl
+    networks:
+      - network1
+    depends_on:
+      - spark-master-tcl
+    entrypoint: /bin/bash
+    command: -c "/opt/spark/sbin/start-history-server.sh; tail -f /dev/null"
+    volumes:
+      - ./spark-logs:/tmp/spark-events
+    ports:
+      - '18080:18080'
+
+networks:
+  network1:
+    name: mynetwork
+    driver: bridge
