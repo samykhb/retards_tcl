@@ -7,9 +7,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafka:
+  kafka-01:
     image: confluentinc/cp-kafka:7.3.0
-    container_name: kafka
+    container_name: kafka-01
     depends_on:
       - zookeeper
     ports:
@@ -18,16 +18,22 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-01:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:29092"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   producer:
     build: ./1_ingestion
     container_name: tcl_producer
     depends_on:
-      - kafka
+      - kafka-01
     restart: on-failure
     # Le Dockerfile execute par defaut "python producer_tcl.py"
 
@@ -35,7 +41,7 @@ services:
     build: ./1_ingestion
     container_name: tcl_consumer
     depends_on:
-      - kafka
+      - kafka-01
     # Maintient le conteneur actif pour executer le script manuellement
     command: tail -f /dev/null
 
@@ -43,7 +49,7 @@ services:
     build: ./1_ingestion
     container_name: tcl_archiver
     depends_on:
-      - kafka
+      - kafka-01
     volumes:
       - ./data/raw:/app/data/raw
     command: ["python", "-u", "archive_to_parquet.py"]
