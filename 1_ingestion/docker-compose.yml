@@ -1,19 +1,30 @@
-version: '3.8'
-
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - network1
 
   kafka-tcl:
     image: confluentinc/cp-kafka:7.3.0
     container_name: kafka-tcl
     depends_on:
       - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     ports:
       - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -22,7 +33,24 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
+      KAFKA_LOG_RETENTION_HOURS: 2
+      KAFKA_LOG_SEGMENT_BYTES: 134217728
+    networks:
+      - network1
+  kafka-tcl-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-tcl-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-tcl:29092
+    depends_on:
+      kafka-tcl:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - network1
   minio:
     image: minio/minio
     container_name: tcl_minio
@@ -35,24 +63,30 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
-    restart: always
+    restart: on-failure
+    networks:
+      - network1
 
   producer:
-    build: ./1_ingestion
+    build: .
     container_name: tcl_producer
     depends_on:
-      - kafka-tcl
+      kafka-tcl:
+        condition: service_healthy
     restart: on-failure
-
+    networks:
+      - network1
   consumer:
-    build: ./1_ingestion
+    build: .
     container_name: tcl_consumer
     depends_on:
       - kafka-tcl
     command: tail -f /dev/null
+    networks:
+      - network1
 
   archiver:
-    build: ./1_ingestion
+    build: .
     container_name: tcl_archiver
     depends_on:
       - kafka-tcl
@@ -65,8 +99,17 @@ services:
       - S3_ENDPOINT=http://minio:9000
     command: ["python", "-u", "archive_to_parquet.py"]
     restart: on-failure
+    networks:
+      - network1
 
+networks:
+  network1:
+    name: mynetwork
+    driver: bridge
 
 
 volumes:
   minio_data:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
