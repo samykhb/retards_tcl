@@ -14,3 +14,11 @@ env/
 .env
 # DS_Store (mac)
 .DS_Store
+# Logs
+*.log
+
+*.jar
+*.xsl
+*.xml
+*.original
+*.properties
