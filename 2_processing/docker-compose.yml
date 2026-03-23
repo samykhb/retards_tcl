@@ -90,7 +90,7 @@ services:
     ports:
       - '18080:18080'
 
-networks:
+networks: 
   network1:
     name: mynetwork
     driver: bridge

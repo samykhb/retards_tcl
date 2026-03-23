@@ -6,11 +6,20 @@ services:
       - "9042:9042"
     environment:
       - CASSANDRA_CLUSTER_NAME=TCL_Cluster
-      # Limitation RAM
       - HEAP_NEWSIZE=128M
-      - MAX_HEAP_SIZE=512M 
+      - MAX_HEAP_SIZE=512M
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "DESCRIBE KEYSPACES;"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
     volumes:
-      - ./3_serving/init.cql:/init.cql
+      - cassandra_data:/var/lib/cassandra
+      - ./init.cql:/init.cql:ro
+    networks:
+      - network1
+
   grafana:
     image: grafana/grafana:latest
     container_name: tcl_grafana
@@ -19,4 +28,15 @@ services:
     environment:
       - GF_INSTALL_PLUGINS=hadesarchitect-cassandra-datasource
     depends_on:
-      - cassandra
+      cassandra:
+        condition: service_healthy
+    networks:
+      - network1
+
+networks:
+  network1:
+    name: mynetwork
+    driver: bridge
+
+volumes:
+  cassandra_data:

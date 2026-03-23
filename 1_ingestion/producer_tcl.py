@@ -1,3 +1,5 @@
+import logging
+logging.basicConfig(level=logging.DEBUG)
 import json
 import time
 import urllib.request
@@ -9,11 +11,11 @@ from kafka.admin import KafkaAdminClient, NewTopic
 
 def main():
     topic = 'tcl-passages'
-    num_partition = 1
+    num_partition = 8
     
     # Identifiants Data Grand Lyon
-    email = os.getenv("TCL_EMAIL")
-    password = os.getenv("TCL_PASSWORD")
+    email = "samy.khebbeb@imt-atlantique.net"
+    password = "3t4mxU8YvuTeTrH"
     
     url = "https://data.grandlyon.com/fr/datapusher/ws/rdata/tcl_sytral.tclpassagearret/all.json?maxfeatures=-1&start=1&filename=prochains-passages-reseau-transports-commun-lyonnais-rhonexpress-disponibilites-temps-reel"
 
@@ -25,7 +27,7 @@ def main():
     admin = None
     while admin is None:
         try:
-            admin = KafkaAdminClient(bootstrap_servers='kafka-01:29092')
+            admin = KafkaAdminClient(bootstrap_servers='kafka-tcl:29092')
             print("Connexion a Kafka reussie !")
         except Exception as e:
             print(f"Kafka error: {type(e).__name__}: {str(e)}")
@@ -44,8 +46,24 @@ def main():
             print(f"Erreur lors de la creation du topic : {e}")
     else:
         print(f"Le topic {topic} est deja existant.")
-
-    producer = KafkaProducer(bootstrap_servers="kafka-01:29092")
+    # Wrap producer init just like you did for admin
+    producer = None
+    while producer is None:
+        try:
+            producer = KafkaProducer(
+            bootstrap_servers='kafka-tcl:29092',
+            key_serializer=lambda k: k.encode('utf-8'),    # ← KEY SUPPORT
+            value_serializer=lambda v: v.encode('utf-8'),
+            acks='all',                    # wait for replicas
+            batch_size=16384,              # batch messages
+            linger_ms=100,                 # slight delay for batching
+            retries=3,                     # retry failed sends
+            compression_type='snappy'      # smaller on wire
+            )
+            print("Producteur Kafka initialisé !")
+        except Exception as e:
+            print(f"Producteur non disponible : {e}, nouvelle tentative dans 5s...")
+            time.sleep(5)
 
     print("Demarrage de l'ingestion des donnees TCL...")
 
@@ -61,7 +79,9 @@ def main():
             passages = data.get("values", [])
             
             for passage in passages:
-                producer.send(topic, json.dumps(passage).encode('utf-8'))
+                key = passage.get('ligne', str(passage.get('gid', 0)))  # ligne OR gid
+                producer.send(topic, key=key.encode('utf-8'), 
+                value=json.dumps(passage).encode('utf-8'))
                 
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {len(passages)} enregistrements envoyes.")
             
