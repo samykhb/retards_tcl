@@ -7,6 +7,7 @@ CREATE KEYSPACE tcl WITH replication = {
 
 USE tcl;
 
+
 -- 1. Line/Route level
 CREATE TABLE delay_stats_line (
   window_ts timestamp,
@@ -30,4 +31,17 @@ CREATE TABLE delay_stats_stop (
   avg_delay_min float,
   early_count bigint,
   PRIMARY KEY ((ligne, direction, stop_id), window_ts)
+) WITH CLUSTERING ORDER BY (window_ts DESC);
+
+CREATE TABLE tcl.delay_stats (
+  window_ts  timestamp,
+  ligne text,
+  direction text,
+  route_code text,
+  pmr text,
+  total_passages bigint,
+  late_count bigint,
+  avg_delay_min float,
+  realtime_count bigint,
+  PRIMARY KEY ((ligne, direction), window_ts)
 ) WITH CLUSTERING ORDER BY (window_ts DESC);
